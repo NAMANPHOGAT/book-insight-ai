@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import requests
 from bs4 import BeautifulSoup
 import chromadb
 from sentence_transformers import SentenceTransformer
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="../frontend", static_url_path="")
 
 # In-memory storage
 books = []
@@ -14,11 +15,22 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 client = chromadb.Client()
 collection = client.get_or_create_collection(name="books")
 
-# 📚 Scrape Books
+
+@app.route('/')
+def serve_frontend():
+    return send_from_directory(app.static_folder, "index.html")
+
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
+
 @app.route('/scrape', methods=['POST'])
 def scrape():
     global books
     books = []
+    collection.delete(where={})  # clear old data
 
     url = "https://books.toscrape.com/"
     res = requests.get(url)
@@ -44,12 +56,11 @@ def scrape():
 
     return jsonify({"message": "Books scraped"})
 
-# 📖 Get Books
+
 @app.route('/books', methods=['GET'])
 def get_books():
     return jsonify(books)
 
-# 🤖 Ask Question (RAG)
 @app.route('/ask', methods=['POST'])
 def ask():
     question = request.json.get("question")
@@ -65,6 +76,7 @@ def ask():
         "question": question,
         "answer": results['documents'][0]
     })
+
 
 if __name__ == '__main__':
     app.run(debug=True)
