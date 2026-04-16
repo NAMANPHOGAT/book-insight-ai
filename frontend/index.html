@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Book Insight AI</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1e40af;
+    }
+
+    .book {
+      background: white;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .book:hover {
+      transform: scale(1.01);
+      transition: 0.2s;
+    }
+
+    .answer {
+      background: #e0f2fe;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+
+    .recommend {
+      margin-top: 10px;
+      background: #10b981;
+    }
+
+    .recommend:hover {
+      background: #047857;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>AI Book Insight Platform</h1>
+
+  <button onclick="scrape()">Load Books</button>
+
+  <div class="controls">
+    <input id="q" placeholder="Ask about books..." />
+    <button onclick="ask()">Ask</button>
+  </div>
+
+  <div id="answer" class="answer"></div>
+
+  <h2>Books</h2>
+  <div id="books"></div>
+
+  <h2>Recommendations</h2>
+  <div id="recommendations"></div>
+</div>
+
+<script>
+const API = "http://127.0.0.1:5000";
+
+async function scrape() {
+  document.getElementById("books").innerHTML = "Loading...";
+  await fetch(API + "/scrape", { method: "POST" });
+  loadBooks();
+}
+
+async function loadBooks() {
+  let res = await fetch(API + "/books");
+  let data = await res.json();
+
+  let html = "";
+  data.forEach(b => {
+    html += `
+      <div class="book">
+        <b>${b.title}</b>
+        <p>${b.summary}</p>
+        <button class="recommend" onclick="recommend('${b.title}')">
+          Recommend Similar
+        </button>
+      </div>
+    `;
+  });
+
+  document.getElementById("books").innerHTML = html;
+}
+
+async function ask() {
+  let q = document.getElementById("q").value;
+
+  let res = await fetch(API + "/ask", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({question: q})
+  });
+
+  let data = await res.json();
+
+  document.getElementById("answer").innerText = data.answer;
+}
+
+async function recommend(title) {
+  let res = await fetch(API + "/recommend", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({title})
+  });
+
+  let data = await res.json();
+
+  let html = "";
+  data.forEach(b => {
+    html += `
+      <div class="book">
+        <b>${b.title}</b>
+        <p><b>Genre:</b> ${b.genre}</p>
+        <p>${b.explanation}</p>
+      </div>
+    `;
+  });
+
+  document.getElementById("recommendations").innerHTML = html;
+}
+</script>
+
+</body>
+</html>
