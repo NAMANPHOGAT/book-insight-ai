@@ -15,10 +15,42 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 client = chromadb.Client()
 collection = client.get_or_create_collection(name="books")
 
+@app.route('/scrape', methods=['POST'])
+def scrape():
+    global books, collection
+    books = []
 
-@app.route('/')
-def serve_frontend():
-    return send_from_directory(app.static_folder, "index.html")
+    # ✅ FIX: Reset collection properly
+    try:
+        client.delete_collection(name="books")
+    except:
+        pass  # ignore if not exists
+
+    collection = client.get_or_create_collection(name="books")
+
+    url = "https://books.toscrape.com/"
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    for i, b in enumerate(soup.select(".product_pod")[:10]):
+        title = b.h3.a["title"]
+
+        book = {
+            "id": str(i),
+            "title": title,
+            "description": "This is a good book"
+        }
+        books.append(book)
+
+        embedding = model.encode(book["description"]).tolist()
+
+        collection.add(
+            documents=[book["description"]],
+            embeddings=[embedding],
+            ids=[book["id"]]
+        )
+
+    return jsonify({"message": "Books scraped successfully"})
 
 
 @app.route('/favicon.ico')
